@@ -90,15 +90,53 @@ st.sidebar.header("👥 사용자 관리")
 worksheets = doc.worksheets()
 user_list = [ws.title for ws in worksheets]
 
+# 1. 사용자 선택
 selected_user = st.sidebar.selectbox("조회할 사람을 선택하세요", user_list)
+
+# 2. 선택된 사용자 설정 (순서 변경 및 삭제)
+with st.sidebar.expander(f"⚙️ '{selected_user}'님 설정 (순서/삭제)"):
+    current_idx = user_list.index(selected_user)
+    
+    st.markdown("##### ↕️ 순서 변경")
+    col1, col2 = st.columns(2)
+    with col1:
+        # 맨 위가 아닐 때만 '위로' 버튼 활성화
+        if st.button("⬆️ 위로", disabled=(current_idx == 0), use_container_width=True):
+            user_list[current_idx], user_list[current_idx-1] = user_list[current_idx-1], user_list[current_idx]
+            ordered_worksheets = [doc.worksheet(name) for name in user_list]
+            doc.reorder_worksheets(ordered_worksheets)
+            st.rerun()
+            
+    with col2:
+        # 맨 아래가 아닐 때만 '아래로' 버튼 활성화
+        if st.button("⬇️ 아래로", disabled=(current_idx == len(user_list) - 1), use_container_width=True):
+            user_list[current_idx], user_list[current_idx+1] = user_list[current_idx+1], user_list[current_idx]
+            ordered_worksheets = [doc.worksheet(name) for name in user_list]
+            doc.reorder_worksheets(ordered_worksheets)
+            st.rerun()
+
+    st.divider()
+    
+    st.markdown("##### 🗑️ 사용자 삭제")
+    st.warning("⚠️ 삭제 시 데이터는 복구할 수 없습니다.")
+    if st.button("❌ 현재 사용자 삭제", type="primary", use_container_width=True):
+        if len(user_list) <= 1:
+            st.error("최소 1명의 사용자는 남아있어야 합니다.")
+        else:
+            ws_to_delete = doc.worksheet(selected_user)
+            doc.del_worksheet(ws_to_delete)
+            st.success(f"'{selected_user}'님이 삭제되었습니다.")
+            st.rerun()
+
 st.sidebar.divider()
 
+# 3. 새로운 사용자 추가
 new_user = st.sidebar.text_input("새로운 사람 추가 (이름 입력 후 Enter)")
 if new_user:
     if new_user not in user_list:
         doc.add_worksheet(title=new_user, rows="100", cols="20")
         st.sidebar.success(f"'{new_user}'님이 추가되었습니다! 새로고침 해주세요.")
-        selected_user = new_user
+        st.rerun()
     else:
         st.sidebar.warning("이미 존재하는 이름입니다.")
 
