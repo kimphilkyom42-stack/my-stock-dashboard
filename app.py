@@ -340,5 +340,3 @@ if not edited_df.empty:
             st.plotly_chart(fig2, use_container_width=True)
 else:
     st.info("위에 있는 검색창을 통해 첫 번째 주식을 추가해 보세요!")
-
-```
