@@ -40,14 +40,17 @@ def update_google_sheet(sheet, dataframe):
     sheet.update(values=save_data, range_name="A1")
 
 # ==========================================
-# 실시간 환율 불러오기
+# 실시간 환율 불러오기 (★실시간 반영 수정판★)
 # ==========================================
-@st.cache_data(ttl=300) 
+@st.cache_data(ttl=60)  # 5분(300초)에서 1분(60초) 단위로 업데이트 주기 단축!
 def get_exchange_rate():
     try:
-        rate = yf.Ticker("KRW=X").history(period="1d")['Close'].iloc[-1]
-        return rate
-    except:
+        # interval="1m"을 추가하여 1분 단위의 가장 최신 실시간 환율을 가져옵니다.
+        ticker = yf.Ticker("KRW=X")
+        rate = ticker.history(period="1d", interval="1m")['Close'].iloc[-1]
+        return float(rate)
+    except Exception as e:
+        # 야후 파이낸스 접속 오류 시 기본값
         return 1350.0 
 
 exchange_rate = get_exchange_rate()
