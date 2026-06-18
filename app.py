@@ -1,8 +1,3 @@
-수정된 환율 불러오기 로직과 함께 전체 코드를 하나로 정리했습니다.
-
-기존 코드에 있던 환율 에러를 해결하고, 전반적인 코드의 흐름을 깔끔하게 유지했습니다. 아래 코드를 그대로 복사해서 기존 파일에 덮어쓰기 하시면 됩니다!
-
-```python
 import streamlit as st
 import pandas as pd
 import yfinance as yf
