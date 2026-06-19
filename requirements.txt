@@ -2,6 +2,7 @@ streamlit
 pandas
 yfinance
 plotly
-requests
 gspread
 google-auth
+requests
+beautifulsoup4
