@@ -7,6 +7,7 @@ from google.oauth2.service_account import Credentials
 import json
 import requests
 import re
+from bs4 import BeautifulSoup
 
 # ==========================================
 # 1. 페이지 기본 설정
@@ -76,7 +77,7 @@ def search_ticker(keyword):
                     return test_ticker, name
             except:
                 continue
-                
+            
     url = f"https://query2.finance.yahoo.com/v1/finance/search?q={keyword}"
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     try:
@@ -216,9 +217,9 @@ if st.button("💾 수정한 내용을 구글 시트에 저장하기"):
     st.rerun()
 
 # ==========================================
-# 10. 현재 주가 및 환율 계산 로직
+# 10. 현재 주가 및 환율 계산 로직 (💡 실시간 네이버 금융 반영)
 # ==========================================
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)
 def get_current_prices_with_currency(tickers, rate):
     prices_krw = []
     prices_usd = []
@@ -233,18 +234,45 @@ def get_current_prices_with_currency(tickers, rate):
             
         ticker_str = str(ticker).upper()
         try:
-            stock = yf.Ticker(ticker_str)
-            price = stock.history(period="1d")['Close'].iloc[-1]
-            
+            # 💡 [한국 주식] 네이버 금융에서 100% 실시간 주가 크롤링
             if ticker_str.endswith('.KS') or ticker_str.endswith('.KQ'):
+                # '.KS', '.KQ'를 떼고 6자리 숫자 코드만 추출 (예: 000660.KS -> 000660)
+                code = ticker_str.replace('.KS', '').replace('.KQ', '')
+                url = f"https://finance.naver.com/item/main.naver?code={code}"
+                
+                # 네이버 서버가 봇을 차단하지 않도록 User-Agent 추가
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                res = requests.get(url, headers=headers)
+                soup = BeautifulSoup(res.text, 'html.parser')
+                
+                # 네이버 금융 현재가 태그 추출
+                today_price_tag = soup.select_one('.no_today .blind')
+                if today_price_tag:
+                    price = float(today_price_tag.text.replace(',', ''))
+                else:
+                    # 만약 크롤링에 실패하면 예비용으로 야후 파이낸스 사용
+                    stock = yf.Ticker(ticker_str)
+                    price = stock.history(period="1d")['Close'].iloc[-1]
+                
                 prices_krw.append(price)
                 prices_usd.append(0)
                 is_us_stock.append(False)
+
+            # 💡 [미국 주식] 기존대로 야후 파이낸스 사용
             else:
+                stock = yf.Ticker(ticker_str)
+                # 장중 실시간 가격을 더 잘 가져오기 위해 info['currentPrice'] 우선 시도
+                try:
+                    price = stock.info.get('currentPrice', stock.history(period="1d")['Close'].iloc[-1])
+                except:
+                    price = stock.history(period="1d")['Close'].iloc[-1]
+                
                 prices_krw.append(price * rate) 
                 prices_usd.append(price)        
                 is_us_stock.append(True)
-        except:
+                
+        except Exception as e:
+            print(f"{ticker_str} 주가 불러오기 실패: {e}")
             prices_krw.append(0)
             prices_usd.append(0)
             is_us_stock.append(False)
